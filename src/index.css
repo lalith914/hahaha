@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 85 30% 95%;
+    --foreground: 150 50% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 50% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 50% 15%;
+
+    --primary: 145 63% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 85 50% 90%;
+    --secondary-foreground: 150 50% 20%;
+
+    --muted: 85 30% 92%;
+    --muted-foreground: 150 20% 40%;
+
+    --accent: 50 90% 55%;
+    --accent-foreground: 150 50% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 145 30% 85%;
+    --input: 145 30% 85%;
+    --ring: 145 63% 42%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(85 40% 92%) 0%, hsl(145 40% 88%) 50%, hsl(50 60% 85%) 100%);
+    --gradient-button: linear-gradient(90deg, hsl(145 63% 42%) 0%, hsl(80 60% 50%) 50%, hsl(50 80% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(85 30% 98%) 100%);
+    --shadow-soft: 0 4px 20px -4px hsl(145 40% 50% / 0.15);
+    --shadow-card: 0 8px 30px -8px hsl(145 40% 30% / 0.12);
+    --font-display: 'Poppins', sans-serif;
+  }
+
+  .dark {
+    --background: 150 30% 8%;
+    --foreground: 85 30% 95%;
+
+    --card: 150 30% 12%;
+    --card-foreground: 85 30% 95%;
+
+    --popover: 150 30% 12%;
+    --popover-foreground: 85 30% 95%;
+
+    --primary: 145 63% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 30% 18%;
+    --secondary-foreground: 85 30% 95%;
+
+    --muted: 150 30% 18%;
+    --muted-foreground: 85 20% 60%;
+
+    --accent: 50 80% 50%;
+    --accent-foreground: 150 50% 10%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 30% 20%;
+    --input: 150 30% 20%;
+    --ring: 145 63% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-display);
+    background: var(--gradient-primary);
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(90deg, hsl(145 63% 30%) 0%, hsl(145 50% 40%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-button {
+    background: var(--gradient-button);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .soft-shadow {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
