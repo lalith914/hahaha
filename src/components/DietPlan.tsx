@@ -9,7 +9,8 @@ import {
   getFilteredFoods,
   calculateBMR,
   calculateTDEE,
-  adjustCaloriesForGoal
+  adjustCaloriesForGoal,
+  shuffleArray
 } from '@/data/foodDatabase';
 
 interface DietPlanProps {
@@ -51,8 +52,11 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
     const selectBestFoods = (category: 'breakfast' | 'lunch' | 'dinner' | 'snack', targetCal: number) => {
       const available = getFilteredFoods(category, userData.dietPreference, perMealBudget * 1.5);
       
-      // Sort by nutritional value (protein/calorie ratio) and pick diverse options
-      const sorted = [...available].sort((a, b) => {
+      // Shuffle the available foods to get random variety
+      const shuffled = shuffleArray(available);
+      
+      // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
+      const sorted = [...shuffled].sort((a, b) => {
         const scoreA = (a.protein * 2 + a.fiber) / (a.calories / 100);
         const scoreB = (b.protein * 2 + b.fiber) / (b.calories / 100);
         return scoreB - scoreA;
@@ -70,7 +74,8 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         if (currentCalories >= targetCal * 0.8 && selected.length >= 2) break;
       }
 
-      return selected.length > 0 ? selected : sorted.slice(0, 3);
+      // Shuffle the selected meals to show them in random order
+      return selected.length > 0 ? shuffleArray(selected) : shuffleArray(sorted.slice(0, 3));
     };
 
     return {
