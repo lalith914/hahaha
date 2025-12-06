@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface FoodItem {
-  id: string;
+  id?: string;
   name: string;
   category: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   type: 'veg' | 'non-veg';
@@ -21,10 +21,10 @@ export interface FoodItem {
   fiber: number;
   price: number;
   image: string;
-  swiggy_url?: string;
-  zomato_url?: string;
+  swiggyUrl?: string;
+  zomatoUrl?: string;
   description?: string;
-  benefits?: string[];
+  benefits?: string;
 }
 
 export const getFilteredFoods = async (
