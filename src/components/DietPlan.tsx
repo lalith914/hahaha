@@ -1,17 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { MealSection } from './MealSection';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Target, Flame, Dumbbell, TrendingUp } from 'lucide-react';
 import {
-  foodDatabase,
-  getFilteredFoods,
   calculateBMR,
   calculateTDEE,
   adjustCaloriesForGoal,
   shuffleArray
 } from '@/data/foodDatabase';
+import { getFilteredFoods, getFoodsByCategory, shuffleArray as supabaseShuffle } from '@/lib/supabase';
 
 interface DietPlanProps {
   userData: {
@@ -28,85 +27,153 @@ interface DietPlanProps {
 }
 
 export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
-  const { dailyCalories, mealCalories, meals } = useMemo(() => {
-    const bmr = calculateBMR(userData.weight, userData.height, userData.age, userData.sex);
-    const tdee = calculateTDEE(bmr, userData.activityLevel);
-    const targetCalories = Math.round(adjustCaloriesForGoal(tdee, userData.goal));
+  const [meals, setMeals] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dailyCalories, setDailyCalories] = useState(0);
+  const [mealCalories, setMealCalories] = useState<any>(null);
+  const [totalStats, setTotalStats] = useState<any>(null);
 
-    const mealDistribution = {
-      breakfast: 0.25,
-      lunch: 0.35,
-      dinner: 0.25,
-      snack: 0.15
-    };
+  useEffect(() => {
+    const generateDietPlan = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    const mealCalories = {
-      breakfast: Math.round(targetCalories * mealDistribution.breakfast),
-      lunch: Math.round(targetCalories * mealDistribution.lunch),
-      dinner: Math.round(targetCalories * mealDistribution.dinner),
-      snack: Math.round(targetCalories * mealDistribution.snack)
-    };
+        const bmr = calculateBMR(userData.weight, userData.height, userData.age, userData.sex);
+        const tdee = calculateTDEE(bmr, userData.activityLevel);
+        const targetCalories = Math.round(adjustCaloriesForGoal(tdee, userData.goal));
 
-    const perMealBudget = userData.budget / 4;
+        const mealDistribution = {
+          breakfast: 0.25,
+          lunch: 0.35,
+          dinner: 0.25,
+          snack: 0.15
+        };
 
-    const selectBestFoods = (category: 'breakfast' | 'lunch' | 'dinner' | 'snack', targetCal: number) => {
-      const available = getFilteredFoods(category, userData.dietPreference, perMealBudget * 1.5);
-      
-      // Shuffle the available foods to get random variety
-      const shuffled = shuffleArray(available);
-      
-      // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
-      const sorted = [...shuffled].sort((a, b) => {
-        const scoreA = (a.protein * 2 + a.fiber) / (a.calories / 100);
-        const scoreB = (b.protein * 2 + b.fiber) / (b.calories / 100);
-        return scoreB - scoreA;
-      });
+        const calculatedMealCalories = {
+          breakfast: Math.round(targetCalories * mealDistribution.breakfast),
+          lunch: Math.round(targetCalories * mealDistribution.lunch),
+          dinner: Math.round(targetCalories * mealDistribution.dinner),
+          snack: Math.round(targetCalories * mealDistribution.snack)
+        };
 
-      // Select foods that sum up close to target calories
-      const selected: typeof available = [];
-      let currentCalories = 0;
+        setDailyCalories(targetCalories);
+        setMealCalories(calculatedMealCalories);
 
-      for (const food of sorted) {
-        if (currentCalories + food.calories <= targetCal * 1.2 && selected.length < 4) {
-          selected.push(food);
-          currentCalories += food.calories;
-        }
-        if (currentCalories >= targetCal * 0.8 && selected.length >= 2) break;
+        const perMealBudget = userData.budget / 4;
+
+        const selectBestFoods = async (
+          category: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+          targetCal: number
+        ) => {
+          const available = await getFilteredFoods(category, userData.dietPreference, perMealBudget * 1.5);
+
+          if (available.length === 0) return [];
+
+          // Shuffle the available foods to get random variety
+          const shuffled = supabaseShuffle(available);
+
+          // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
+          const sorted = [...shuffled].sort((a, b) => {
+            const scoreA = (a.protein * 2 + a.fiber) / (a.calories / 100);
+            const scoreB = (b.protein * 2 + b.fiber) / (b.calories / 100);
+            return scoreB - scoreA;
+          });
+
+          // Select foods that sum up close to target calories
+          const selected = [];
+          let currentCalories = 0;
+
+          for (const food of sorted) {
+            if (currentCalories + food.calories <= targetCal * 1.2 && selected.length < 4) {
+              selected.push(food);
+              currentCalories += food.calories;
+            }
+            if (currentCalories >= targetCal * 0.8 && selected.length >= 2) break;
+          }
+
+          // Shuffle the selected meals to show them in random order
+          return selected.length > 0 ? supabaseShuffle(selected) : supabaseShuffle(sorted.slice(0, 3));
+        };
+
+        const [breakfast, lunch, dinner, snack] = await Promise.all([
+          selectBestFoods('breakfast', calculatedMealCalories.breakfast),
+          selectBestFoods('lunch', calculatedMealCalories.lunch),
+          selectBestFoods('dinner', calculatedMealCalories.dinner),
+          selectBestFoods('snack', calculatedMealCalories.snack)
+        ]);
+
+        const generatedMeals = { breakfast, lunch, dinner, snack };
+        setMeals(generatedMeals);
+
+        // Calculate total stats
+        const allFoods = [...breakfast, ...lunch, ...dinner, ...snack];
+        const stats = {
+          calories: allFoods.reduce((sum: number, f: any) => sum + f.calories, 0),
+          protein: allFoods.reduce((sum: number, f: any) => sum + f.protein, 0),
+          carbs: allFoods.reduce((sum: number, f: any) => sum + f.carbs, 0),
+          fat: allFoods.reduce((sum: number, f: any) => sum + f.fat, 0),
+          fiber: allFoods.reduce((sum: number, f: any) => sum + f.fiber, 0),
+          cost: allFoods.reduce((sum: number, f: any) => sum + f.price, 0)
+        };
+        setTotalStats(stats);
+      } catch (err) {
+        console.error('Error generating diet plan:', err);
+        setError('Failed to generate diet plan. Please try again.');
+        setMeals(null);
+      } finally {
+        setLoading(false);
       }
-
-      // Shuffle the selected meals to show them in random order
-      return selected.length > 0 ? shuffleArray(selected) : shuffleArray(sorted.slice(0, 3));
     };
 
-    return {
-      dailyCalories: targetCalories,
-      mealCalories,
-      meals: {
-        breakfast: selectBestFoods('breakfast', mealCalories.breakfast),
-        lunch: selectBestFoods('lunch', mealCalories.lunch),
-        dinner: selectBestFoods('dinner', mealCalories.dinner),
-        snack: selectBestFoods('snack', mealCalories.snack)
-      }
-    };
+    generateDietPlan();
   }, [userData]);
 
-  const totalStats = useMemo(() => {
-    const allFoods = [...meals.breakfast, ...meals.lunch, ...meals.dinner, ...meals.snack];
-    return {
-      calories: allFoods.reduce((sum, f) => sum + f.calories, 0),
-      protein: allFoods.reduce((sum, f) => sum + f.protein, 0),
-      carbs: allFoods.reduce((sum, f) => sum + f.carbs, 0),
-      fat: allFoods.reduce((sum, f) => sum + f.fat, 0),
-      fiber: allFoods.reduce((sum, f) => sum + f.fiber, 0),
-      cost: allFoods.reduce((sum, f) => sum + f.price, 0)
-    };
-  }, [meals]);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Generating your personalized diet plan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4 p-6">
+        <Button variant="ghost" onClick={onBack} className="gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <Card className="p-6 border-red-200 bg-red-50 dark:bg-red-900/20">
+          <p className="text-red-700 dark:text-red-400">{error}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!meals) {
+    return (
+      <div className="space-y-4 p-6">
+        <Button variant="ghost" onClick={onBack} className="gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <Card className="p-6 text-center">
+          <p className="text-muted-foreground">No meals available. Please adjust your filters and try again.</p>
+        </Card>
+      </div>
+    );
+  }
 
   const goalText = {
     lose: 'Weight Loss',
-    maintain: 'Maintenance',
-    gain: 'Weight Gain'
-  }[userData.goal] || 'Healthy Eating';
+    gain: 'Muscle Gain',
+    maintain: 'Maintenance'
+  }[userData.goal] || 'Personalized';
 
   return (
     <div className="space-y-8 animate-fade-in">
