@@ -62,7 +62,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         setDailyCalories(targetCalories);
         setMealCalories(calculatedMealCalories);
 
-        const perMealBudget = userData.budget / 4;
+        const perMealBudget = userData.budget > 0 ? userData.budget / 4 : 1000; // Default to 1000 if no budget entered
 
         const selectBestFoods = async (
           category: 'breakfast' | 'lunch' | 'dinner' | 'snack',
@@ -70,7 +70,14 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         ) => {
           const available = await getFilteredFoods(category, userData.dietPreference, perMealBudget * 1.5);
 
-          if (available.length === 0) return [];
+          if (available.length === 0) {
+            // Fallback: get foods without budget constraint
+            const allFoodsInCategory = await getFoodsByCategory(category);
+            if (userData.dietPreference !== 'both') {
+              return allFoodsInCategory.filter(f => f.type === userData.dietPreference).slice(0, 3);
+            }
+            return allFoodsInCategory.slice(0, 3);
+          }
 
           // Shuffle the available foods to get random variety
           const shuffled = shuffleArray(available);
