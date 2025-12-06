@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Target, Flame, Dumbbell, TrendingUp } from 'lucide-react';
 import {
+  type FoodItem,
   calculateBMR,
   calculateTDEE,
   adjustCaloriesForGoal,
@@ -47,10 +48,12 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
       try {
         setLoading(true);
         setError(null);
+        console.log('Starting diet plan generation with userData:', userData);
 
         const bmr = calculateBMR(userData.weight, userData.height, userData.age, userData.sex);
         const tdee = calculateTDEE(bmr, userData.activityLevel);
         const targetCalories = Math.round(adjustCaloriesForGoal(tdee, userData.goal));
+        console.log('Calculated TDEE:', tdee, 'Target calories:', targetCalories);
 
         const mealDistribution = {
           breakfast: 0.25,
@@ -69,47 +72,65 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         setDailyCalories(targetCalories);
         setMealCalories(calculatedMealCalories);
 
-        const perMealBudget = userData.budget > 0 ? userData.budget / 4 : 1000; // Default to 1000 if no budget entered
+        // Use no budget limit - get all foods in price range
+        const maxPricePerMeal = 2000; // High limit to get all foods
 
         const selectBestFoods = async (
           category: 'breakfast' | 'lunch' | 'dinner' | 'snack',
           targetCal: number
-        ) => {
-          const available = await getFilteredFoods(category, userData.dietPreference, perMealBudget * 1.5);
+        ): Promise<FoodItem[]> => {
+          try {
+            console.log(`Fetching foods for ${category}...`);
+            const available = await getFilteredFoods(category, userData.dietPreference, maxPricePerMeal);
+            console.log(`Got ${available.length} foods for ${category}`);
 
-          if (available.length === 0) {
-            // Fallback: get foods without budget constraint
-            const allFoodsInCategory = await getFoodsByCategory(category);
-            if (userData.dietPreference !== 'both') {
-              return allFoodsInCategory.filter(f => f.type === userData.dietPreference).slice(0, 3);
+            if (available.length === 0) {
+              console.log(`No filtered foods for ${category}, getting all...`);
+              const allFoodsInCategory = await getFoodsByCategory(category);
+              console.log(`Got ${allFoodsInCategory.length} foods (no filter) for ${category}`);
+              
+              if (allFoodsInCategory.length === 0) {
+                console.warn(`WARNING: No foods available for ${category}!`);
+                return [];
+              }
+              
+              if (userData.dietPreference !== 'both') {
+                const filtered = allFoodsInCategory.filter(f => f.type === userData.dietPreference);
+                return filtered.slice(0, 4);
+              }
+              return allFoodsInCategory.slice(0, 4);
             }
-            return allFoodsInCategory.slice(0, 3);
-          }
 
-          // Shuffle the available foods to get random variety
-          const shuffled = shuffleArray(available);
+            // Shuffle the available foods to get random variety
+            const shuffled = shuffleArray(available);
 
-          // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
-          const sorted = [...shuffled].sort((a, b) => {
-            const scoreA = (a.protein * 2 + a.fiber) / (a.calories / 100);
-            const scoreB = (b.protein * 2 + b.fiber) / (b.calories / 100);
-            return scoreB - scoreA;
-          });
+            // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
+            const sorted = [...shuffled].sort((a, b) => {
+              const scoreA = (a.protein * 2 + a.fiber) / (a.calories / 100);
+              const scoreB = (b.protein * 2 + b.fiber) / (b.calories / 100);
+              return scoreB - scoreA;
+            });
 
-          // Select foods that sum up close to target calories
-          const selected = [];
-          let currentCalories = 0;
+            // Select foods that sum up close to target calories
+            const selected: FoodItem[] = [];
+            let currentCalories = 0;
 
-          for (const food of sorted) {
-            if (currentCalories + food.calories <= targetCal * 1.2 && selected.length < 4) {
-              selected.push(food);
-              currentCalories += food.calories;
+            for (const food of sorted) {
+              if (currentCalories + food.calories <= targetCal * 1.2 && selected.length < 4) {
+                selected.push(food);
+                currentCalories += food.calories;
+              }
+              if (currentCalories >= targetCal * 0.8 && selected.length >= 2) break;
             }
-            if (currentCalories >= targetCal * 0.8 && selected.length >= 2) break;
-          }
 
-          // Shuffle the selected meals to show them in random order
-          return selected.length > 0 ? shuffleArray(selected) : shuffleArray(sorted.slice(0, 3));
+            // Shuffle the selected meals to show them in random order
+            const result = selected.length > 0 ? shuffleArray(selected) : shuffleArray(sorted.slice(0, 3));
+            console.log(`Returning ${result.length} foods for ${category}`);
+            return result;
+          } catch (err) {
+            console.error(`Error in selectBestFoods for ${category}:`, err);
+            return [];
+          }
         };
 
         const [breakfast, lunch, dinner, snack] = await Promise.all([
@@ -120,13 +141,18 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         ]);
 
         const generatedMeals = { breakfast, lunch, dinner, snack };
-        console.log('Generated meals:', generatedMeals);
-        console.log('Breakfast:', breakfast.length, 'Lunch:', lunch.length, 'Dinner:', dinner.length, 'Snack:', snack.length);
+        console.log('Generated meals:', {
+          breakfast: breakfast.length,
+          lunch: lunch.length,
+          dinner: dinner.length,
+          snack: snack.length
+        });
+
         setMeals(generatedMeals);
 
         // Calculate total stats
         const allFoods = [...breakfast, ...lunch, ...dinner, ...snack];
-        console.log('All foods:', allFoods);
+        console.log('Total foods for stats:', allFoods.length);
         const stats = {
           calories: allFoods.reduce((sum: number, f: any) => sum + f.calories, 0),
           protein: allFoods.reduce((sum: number, f: any) => sum + f.protein, 0),
@@ -139,7 +165,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         setTotalStats(stats);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error('Error generating diet plan:', errorMsg);
+        console.error('CRITICAL ERROR generating diet plan:', errorMsg, err);
         setError(`Failed to generate diet plan: ${errorMsg}`);
         setMeals(null);
       } finally {
