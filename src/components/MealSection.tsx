@@ -1,4 +1,4 @@
-import { FoodItem } from '@/data/foodDatabase';
+import { type FoodItem } from '@/lib/supabase';
 import { FoodCard } from './FoodCard';
 import { Badge } from '@/components/ui/badge';
 import { Sun, Coffee, Moon, Cookie, Flame, Dumbbell } from 'lucide-react';

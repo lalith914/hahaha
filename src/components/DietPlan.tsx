@@ -8,9 +8,10 @@ import {
   calculateBMR,
   calculateTDEE,
   adjustCaloriesForGoal,
+  getFilteredFoods,
+  getFoodsByCategory,
   shuffleArray
-} from '@/data/foodDatabase';
-import { getFilteredFoods, getFoodsByCategory, shuffleArray as supabaseShuffle } from '@/lib/supabase';
+} from '@/lib/supabase';
 
 interface DietPlanProps {
   userData: {
@@ -72,7 +73,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
           if (available.length === 0) return [];
 
           // Shuffle the available foods to get random variety
-          const shuffled = supabaseShuffle(available);
+          const shuffled = shuffleArray(available);
 
           // Sort by nutritional value (protein/calorie ratio) but from the shuffled list
           const sorted = [...shuffled].sort((a, b) => {
@@ -94,7 +95,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
           }
 
           // Shuffle the selected meals to show them in random order
-          return selected.length > 0 ? supabaseShuffle(selected) : supabaseShuffle(sorted.slice(0, 3));
+          return selected.length > 0 ? shuffleArray(selected) : shuffleArray(sorted.slice(0, 3));
         };
 
         const [breakfast, lunch, dinner, snack] = await Promise.all([

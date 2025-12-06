@@ -107,3 +107,37 @@ export const shuffleArray = <T,>(array: T[]): T[] => {
   }
   return shuffled;
 };
+
+export const calculateBMR = (
+  weight: number,
+  height: number,
+  age: number,
+  sex: 'male' | 'female'
+): number => {
+  if (sex === 'male') {
+    return 10 * weight + 6.25 * height - 5 * age + 5;
+  }
+  return 10 * weight + 6.25 * height - 5 * age - 161;
+};
+
+export const calculateTDEE = (bmr: number, activityLevel: string): number => {
+  const multipliers: Record<string, number> = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    'very-active': 1.9
+  };
+  return bmr * (multipliers[activityLevel] || 1.2);
+};
+
+export const adjustCaloriesForGoal = (tdee: number, goal: string): number => {
+  switch (goal) {
+    case 'lose':
+      return tdee - 500;
+    case 'gain':
+      return tdee + 300;
+    default:
+      return tdee;
+  }
+};
