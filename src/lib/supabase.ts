@@ -33,6 +33,7 @@ export const getFilteredFoods = async (
   maxPrice: number
 ): Promise<FoodItem[]> => {
   try {
+    console.log(`Fetching foods: category=${category}, dietType=${dietType}, maxPrice=${maxPrice}`);
     let query = supabase
       .from('foods')
       .select('*')
@@ -51,6 +52,7 @@ export const getFilteredFoods = async (
       return [];
     }
 
+    console.log(`Fetched ${data?.length || 0} foods for category ${category}`);
     return (data || []) as FoodItem[];
   } catch (err) {
     console.error('Error in getFilteredFoods:', err);
@@ -81,6 +83,7 @@ export const getFoodsByCategory = async (
   category: 'breakfast' | 'lunch' | 'dinner' | 'snack'
 ): Promise<FoodItem[]> => {
   try {
+    console.log(`Fetching all foods for category: ${category}`);
     const { data, error } = await supabase
       .from('foods')
       .select('*')
@@ -92,6 +95,7 @@ export const getFoodsByCategory = async (
       return [];
     }
 
+    console.log(`Fetched ${data?.length || 0} foods for category ${category} (fallback)`);
     return (data || []) as FoodItem[];
   } catch (err) {
     console.error('Error in getFoodsByCategory:', err);

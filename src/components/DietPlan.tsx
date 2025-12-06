@@ -33,7 +33,14 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
   const [error, setError] = useState<string | null>(null);
   const [dailyCalories, setDailyCalories] = useState(0);
   const [mealCalories, setMealCalories] = useState<any>(null);
-  const [totalStats, setTotalStats] = useState<any>(null);
+  const [totalStats, setTotalStats] = useState<any>({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    cost: 0
+  });
 
   useEffect(() => {
     const generateDietPlan = async () => {
@@ -113,10 +120,13 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
         ]);
 
         const generatedMeals = { breakfast, lunch, dinner, snack };
+        console.log('Generated meals:', generatedMeals);
+        console.log('Breakfast:', breakfast.length, 'Lunch:', lunch.length, 'Dinner:', dinner.length, 'Snack:', snack.length);
         setMeals(generatedMeals);
 
         // Calculate total stats
         const allFoods = [...breakfast, ...lunch, ...dinner, ...snack];
+        console.log('All foods:', allFoods);
         const stats = {
           calories: allFoods.reduce((sum: number, f: any) => sum + f.calories, 0),
           protein: allFoods.reduce((sum: number, f: any) => sum + f.protein, 0),
@@ -125,10 +135,12 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
           fiber: allFoods.reduce((sum: number, f: any) => sum + f.fiber, 0),
           cost: allFoods.reduce((sum: number, f: any) => sum + f.price, 0)
         };
+        console.log('Stats calculated:', stats);
         setTotalStats(stats);
       } catch (err) {
-        console.error('Error generating diet plan:', err);
-        setError('Failed to generate diet plan. Please try again.');
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error('Error generating diet plan:', errorMsg);
+        setError(`Failed to generate diet plan: ${errorMsg}`);
         setMeals(null);
       } finally {
         setLoading(false);

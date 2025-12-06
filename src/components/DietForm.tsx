@@ -20,6 +20,7 @@ interface DietFormProps {
 }
 
 export const DietForm = ({ onSubmit }: DietFormProps) => {
+  console.log('DietForm component mounted');
   const [formData, setFormData] = useState<DietFormData>({
     age: 0,
     sex: 'male',
