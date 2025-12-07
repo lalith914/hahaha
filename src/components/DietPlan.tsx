@@ -201,7 +201,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
     );
   }
 
-  if (!meals) {
+  if (!meals || (meals.breakfast?.length === 0 && meals.lunch?.length === 0 && meals.dinner?.length === 0 && meals.snack?.length === 0)) {
     return (
       <div className="space-y-4 p-6">
         <Button variant="ghost" onClick={onBack} className="gap-2">
@@ -209,7 +209,7 @@ export const DietPlan = ({ userData, onBack }: DietPlanProps) => {
           Back
         </Button>
         <Card className="p-6 text-center">
-          <p className="text-muted-foreground">No meals available. Please adjust your filters and try again.</p>
+          <p className="text-muted-foreground">No meals available. Please try again.</p>
         </Card>
       </div>
     );
